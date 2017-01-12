@@ -1,5 +1,6 @@
 # -*- encoding: utf8 -*-
 
+import email.utils as rfc822
 import requests
 from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
@@ -29,7 +30,6 @@ class SendCloudBackend(BaseEmailBackend):
                 self._api_user, self._api_key = None, None
             else:
                 raise
-        # print self._api_key, self._api_user
         self._api_url = 'https://api.sendcloud.net/apiv2/mail/send'
 
     @property
@@ -69,6 +69,14 @@ class SendCloudBackend(BaseEmailBackend):
             "plain": email_message.body,
             "respEmailId": "true",
         }
+
+        # Required, as SendCloud will overly escape fromName.
+        # e.g. Example.com <mail@example.com>
+        #      fromName will be parsed as "\"Example.com\""
+        from_name, _ = rfc822.parseaddr(from_email)
+
+        if from_name:
+            params['fromName'] = from_name
 
         try:
             r = requests.post(self.api_url, data=params)
