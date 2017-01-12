@@ -72,15 +72,15 @@ class SendCloudBackend(BaseEmailBackend):
 
         try:
             r = requests.post(self.api_url, data=params)
+            res = r.json()
         except Exception:
             if not self.fail_silently:
                 raise
             return False
 
-        res = r.json()
-        if "errors" in res:
+        if not res['result']:
             if not self.fail_silently:
-                raise SendCloudAPIError(res['errors'])
+                raise SendCloudAPIError(res['message'])
             return False
 
         return True
@@ -100,45 +100,6 @@ class SendCloudBackend(BaseEmailBackend):
                 num_sent += 1
 
         return num_sent
-
-
-class APIBaseClass(object):
-    def __init__(self, fail_silently=False, *args, **kwargs):
-        api_user, api_key = (kwargs.pop('api_user', None),
-                             kwargs.pop('api_key', None))
-        self.fail_silently = fail_silently
-        try:
-            self._api_user = api_user or getattr(settings, 'SENDCLOUD_API_USER')
-            self._api_key = api_key or getattr(settings, 'SENDCLOUD_API_KEY')
-        except AttributeError:
-            if fail_silently:
-                self._api_user, self._api_key = None, None
-            else:
-                raise
-
-    @property
-    def api_user(self):
-        return self._api_user
-
-    @property
-    def api_key(self):
-        return self._api_key
-
-    def post_api(self, url, data):
-        try:
-            r = requests.post(url, data=data)
-            res = r.json()
-        except Exception:
-            if not self.fail_silently:
-                raise
-            return False
-
-        if not res['result']:
-            if not self.fail_silently:
-                raise SendCloudAPIError(res['message'])
-            return False
-
-        return res
 
 
 __author__ = ('edison7500', 'freeyoung', )
