@@ -1,7 +1,6 @@
 # -*- encoding: utf8 -*-
 
 import requests
-import json
 from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
 from django.core.mail.message import sanitize_address
@@ -13,33 +12,33 @@ class SendCloudAPIError(Exception):
 
 class SendCloudBackend(BaseEmailBackend):
     """
-        A Django Email backend that uses send cloud.
+    A Django Email backend that uses send cloud.
     """
 
     def __init__(self, fail_silently=False, *args, **kwargs):
-        app_user, app_key = (kwargs.pop('app_user', None),
-                             kwargs.pop('app_key', None))
+        api_user, api_key = (kwargs.pop('api_user', None),
+                             kwargs.pop('api_key', None))
 
         super(SendCloudBackend, self).__init__(fail_silently=fail_silently,
                                                *args, **kwargs)
         try:
-            self._app_user = app_user or getattr(settings, 'SENDCLOUD_API_USER')
-            self._app_key = app_key or getattr(settings, 'SENDCLOUD_API_KEY')
+            self._api_user = api_user or getattr(settings, 'SENDCLOUD_API_USER')
+            self._api_key = api_key or getattr(settings, 'SENDCLOUD_API_KEY')
         except AttributeError:
             if fail_silently:
-                self._app_user, self._app_key = None, None
+                self._api_user, self._api_key = None, None
             else:
                 raise
-        # print self._app_key, self._app_user
-        self._api_url = "http://sendcloud.sohu.com/webapi/mail.send_template.json"
+        # print self._api_key, self._api_user
+        self._api_url = 'https://api.sendcloud.net/apiv2/mail/send'
 
     @property
-    def app_user(self):
-        return self._app_user
+    def api_user(self):
+        return self._api_user
 
     @property
-    def app_key(self):
-        return self._app_key
+    def api_key(self):
+        return self._api_key
 
     @property
     def api_url(self):
@@ -55,28 +54,20 @@ class SendCloudBackend(BaseEmailBackend):
         """A helper method that does the actual sending."""
         if not email_message.recipients():
             return False
+
         from_email = sanitize_address(email_message.from_email,
                                       email_message.encoding)
-        from_name = sanitize_address(email_message.from_name,
-                                     email_message.encoding)
         recipients = [sanitize_address(addr, email_message.encoding)
                       for addr in email_message.recipients()]
 
-        template = email_message.template_invoke_name
-        sub_vars = {
-            'to': recipients,
-            'sub': email_message.sub_vars
-        }
-
         params = {
-            "api_user": self.app_user,
-            "api_key": self.app_key,
-            "template_invoke_name": template,
-            "substitution_vars": json.dumps(sub_vars),
+            "apiUser": self.api_user,
+            "apiKey": self.api_key,
+            "to": ';'.join(recipients),
             "from": from_email,
-            "mail_from": from_email,
-            "fromname": from_name,
-            "resp_email_id": "true",
+            "subject": email_message.subject,
+            "plain": email_message.body,
+            "respEmailId": "true",
         }
 
         try:
@@ -95,13 +86,15 @@ class SendCloudBackend(BaseEmailBackend):
         return True
 
     def send_messages(self, email_messages):
-        """Sends one or more EmailMessage objects and returns the number of
+        """
+        Sends one or more EmailMessage objects and returns the number of
         email messages sent.
         """
         if not email_messages:
             return
 
         num_sent = 0
+
         for message in email_messages:
             if self._send(message):
                 num_sent += 1
@@ -111,8 +104,8 @@ class SendCloudBackend(BaseEmailBackend):
 
 class APIBaseClass(object):
     def __init__(self, fail_silently=False, *args, **kwargs):
-        api_user, api_key = (kwargs.pop('app_user', None),
-                             kwargs.pop('app_key', None))
+        api_user, api_key = (kwargs.pop('api_user', None),
+                             kwargs.pop('api_key', None))
         self.fail_silently = fail_silently
         try:
             self._api_user = api_user or getattr(settings, 'SENDCLOUD_API_USER')
@@ -134,19 +127,18 @@ class APIBaseClass(object):
     def post_api(self, url, data):
         try:
             r = requests.post(url, data=data)
+            res = r.json()
         except Exception:
             if not self.fail_silently:
                 raise
             return False
 
-        res = r.json()
-
-        if 'errors' in res:
+        if not res['result']:
             if not self.fail_silently:
-                raise SendCloudAPIError(res['errors'])
+                raise SendCloudAPIError(res['message'])
             return False
 
         return res
 
 
-__author__ = 'edison7500'
+__author__ = ('edison7500', 'freeyoung', )
