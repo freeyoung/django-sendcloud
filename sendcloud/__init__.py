@@ -7,15 +7,6 @@ from django.core.mail.backends.base import BaseEmailBackend
 from django.core.mail.message import sanitize_address
 
 
-try:
-    from io import StringIO
-except ImportError:
-    try:
-        from cStringIO import StringIO
-    except ImportError:
-        from StringIO import StringIO
-
-
 class SendCloudAPIError(Exception):
     pass
 
@@ -32,8 +23,8 @@ class SendCloudBackend(BaseEmailBackend):
         super(SendCloudBackend, self).__init__(fail_silently=fail_silently,
                                                *args, **kwargs)
         try:
-            self._app_user = app_user or getattr(settings, 'MAIL_APP_USER')
-            self._app_key = app_key or getattr(settings, 'MAIL_APP_KEY')
+            self._app_user = app_user or getattr(settings, 'SENDCLOUD_API_USER')
+            self._app_key = app_key or getattr(settings, 'SENDCLOUD_API_KEY')
         except AttributeError:
             if fail_silently:
                 self._app_user, self._app_key = None, None
@@ -96,7 +87,7 @@ class SendCloudBackend(BaseEmailBackend):
             return False
 
         res = r.json()
-        if res.has_key("errors"):
+        if "errors" in res:
             if not self.fail_silently:
                 raise SendCloudAPIError(res['errors'])
             return False
@@ -124,8 +115,8 @@ class APIBaseClass(object):
                              kwargs.pop('app_key', None))
         self.fail_silently = fail_silently
         try:
-            self._api_user = api_key or getattr(settings, 'MAIL_APP_USER')
-            self._api_key = api_key or getattr(settings, 'MAIL_APP_KEY')
+            self._api_user = api_user or getattr(settings, 'SENDCLOUD_API_USER')
+            self._api_key = api_key or getattr(settings, 'SENDCLOUD_API_KEY')
         except AttributeError:
             if fail_silently:
                 self._api_user, self._api_key = None, None
