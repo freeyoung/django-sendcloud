@@ -1,12 +1,10 @@
-from setuptools import setup, find_packages
-import os
-import platform
+from setuptools import setup
 
 DESCRIPTION = "A Django email backend for SendCloud"
 
 LONG_DESCRIPTION = None
 try:
-    LONG_DESCRIPTION = open('README.rst').read()
+    LONG_DESCRIPTION = open('README.md').read()
 except:
     pass
 
@@ -31,9 +29,9 @@ setup(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     platforms=['any'],
-    install_requires=['requests==2.6.0', 'django==1.6.11'],
+    install_requires=['requests>=2.6.0', 'django>=1.6.11'],
     classifiers=CLASSIFIERS,
-    zip_safe = False,
+    zip_safe=False,
 )
 
 __author__ = 'edison7500'
